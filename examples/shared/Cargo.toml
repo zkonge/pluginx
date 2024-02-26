@@ -1,0 +1,15 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = { version = "0.12" }
+tonic = { version = "0.11", default-features = false, features = [
+    "codegen",
+    "prost",
+] }
+pluginx = { path = "../../" }
+
+[build-dependencies]
+tonic-build = "0.11"

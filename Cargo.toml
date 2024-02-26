@@ -1,0 +1,29 @@
+[package]
+name = "pluginx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytes = "1.5.0"
+futures = "0.3.30"
+hashbrown = "0.14.3"
+http-body = "1.0.0"
+prost = "0.12.3"
+prost-types = "0.12.3"
+serde = { version = "1.0.197", features = ["derive"] }
+thiserror = "1.0.57"
+tokio = { version = "1.36.0", features = ["net"] }
+tonic = "0.11.0"
+tonic-health = "0.11.0"
+tower-service = "0.3.2"
+tracing = "0.1.40"
+
+[build-dependencies]
+tonic-build = "0.11.0"
+
+[features]
+client = []
+server = []
+
+[workspace]
+members = ["examples/*"]
