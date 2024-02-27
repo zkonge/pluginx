@@ -1,3 +1,4 @@
+pub mod builtin;
 pub mod config;
 pub mod util;
 
@@ -14,9 +15,10 @@ use tonic::{
         Body,
     },
 };
+use tonic_health::ServingStatus;
 use tower_service::Service;
 
-use self::config::ServerConfig;
+use self::{builtin::GrpcStdioWriterMaker, config::ServerConfig};
 use crate::{constant::PLUGIN_UNIX_SOCKET_DIR, HandshakeMessage, Network, Protocol};
 
 pub struct Server {
@@ -81,11 +83,31 @@ load any plugins automatically."
         self.routes.add_service(plugin);
     }
 
+    pub async fn tracing_writer_maker(&mut self) -> GrpcStdioWriterMaker {
+        // TODO: only allow one tracing writer
+        let (svc, maker) = builtin::Stdio::new();
+        self.routes.add_service(svc);
+        maker
+    }
+
     pub async fn run(mut self) -> io::Result<()> {
+        // health service
+        let (mut health_reporter, health_server) = tonic_health::server::health_reporter();
+        health_reporter
+            .set_service_status("plugin", ServingStatus::Serving)
+            .await;
+        self.routes.add_service(health_server);
+
+        // graceful exit service
+        let (svc, exit_notifier) = builtin::Controller::new();
+        self.routes.add_service(svc);
+
         let uds = UnixListenerStream::new(UnixListener::bind(&self.socket_path)?);
 
         let server = TonicServer::builder().add_routes(mem::take(&mut self.routes).routes());
-        let server = tokio::spawn(server.serve_with_incoming(uds));
+        let server = tokio::spawn(server.serve_with_incoming_shutdown(uds, async {
+            let _ = exit_notifier.await;
+        }));
 
         let handshake_message = HandshakeMessage {
             core_protocol: 1,
