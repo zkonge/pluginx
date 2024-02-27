@@ -1,5 +1,5 @@
 syntax = "proto3";
-package example;
+package proto;
 
 message GetRequest { string key = 1; }
 

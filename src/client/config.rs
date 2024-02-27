@@ -1,14 +1,15 @@
-use std::{collections::HashMap, ops::RangeInclusive, process::Command};
+use std::{collections::HashMap, ops::RangeInclusive};
 
-use prost_types::Duration;
+use std::time::Duration;
+use tokio::process::Command;
 
 use crate::handshake::HandshakeConfig;
 
 pub struct ClientConfig {
     pub handshake_config: HandshakeConfig<'static>,
-    pub cmd: Box<Command>,
+    pub cmd: Command,
     pub broker_multiplex: bool,
-    pub port_range: RangeInclusive<u16>,
+    pub port_range: Option<RangeInclusive<u16>>,
     pub startup_timeout: Duration,
 }
 

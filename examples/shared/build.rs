@@ -1,6 +1,6 @@
 fn main() {
     tonic_build::configure()
         .build_transport(false)
-        .compile(&["proto/example.proto"], &["proto"])
+        .compile(&["proto/kv.proto"], &["proto"])
         .unwrap();
 }
