@@ -7,12 +7,17 @@ edition = "2021"
 bytes = "1.5.0"
 futures = "0.3.30"
 hashbrown = "0.14.3"
+http = "0.2.11" # tonic needs it :(
 http-body = "1.0.0"
 prost = "0.12.3"
 prost-types = "0.12.3"
 serde = { version = "1.0.197", features = ["derive"] }
+tempfile = "3.10.1"
 thiserror = "1.0.57"
 tokio = { version = "1.36.0", features = ["net", "process"] }
+tokio-stream = { version = "0.1.14", default-features = false, features = [
+    "net",
+] }
 tonic = "0.11.0"
 tonic-health = "0.11.0"
 tower = "0.4.13"

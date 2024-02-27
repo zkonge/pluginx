@@ -3,10 +3,9 @@ pub mod message;
 
 use std::num::ParseIntError;
 
-use thiserror::Error;
-
 pub use config::HandshakeConfig;
 pub use message::{HandshakeMessage, Network, Protocol};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum HandshakeError {

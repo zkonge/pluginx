@@ -1,4 +1,9 @@
-use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+use std::{
+    fmt::{self, Display, Formatter},
+    net::SocketAddr,
+    path::PathBuf,
+    str::FromStr,
+};
 
 use super::HandshakeError;
 
@@ -19,6 +24,15 @@ impl Network {
     }
 }
 
+impl Display for Network {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Network::Tcp(addr) => write!(f, "tcp|{addr}",),
+            Network::Unix(path) => write!(f, "unix|{}", path.display()),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Protocol {
     Grpc,
@@ -35,6 +49,14 @@ impl FromStr for Protocol {
     }
 }
 
+impl Display for Protocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Protocol::Grpc => f.write_str("grpc"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct HandshakeMessage {
     pub core_protocol: u32,
@@ -46,7 +68,7 @@ pub struct HandshakeMessage {
 impl HandshakeMessage {
     // CORE-PROTOCOL-VERSION | APP-PROTOCOL-VERSION | NETWORK-TYPE | NETWORK-ADDR | PROTOCOL
     pub fn parse(s: &str) -> Result<Self, HandshakeError> {
-        let mut it: Vec<_> = s.split('|').map(str::trim).collect();
+        let it: Vec<_> = s.split('|').map(str::trim).collect();
         if it.len() < 5 {
             return Err(HandshakeError::InvalidHandshakeMessage);
         }
@@ -57,5 +79,18 @@ impl HandshakeMessage {
             network: Network::parse(it[2], it[3])?,
             protocol: it[4].parse()?,
         })
+    }
+}
+
+impl Display for HandshakeMessage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{core_protocol}|{app_protocol}|{network}|{protocol}",
+            core_protocol = self.core_protocol,
+            app_protocol = self.app_protocol,
+            network = self.network,
+            protocol = self.protocol
+        )
     }
 }

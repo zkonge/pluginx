@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 pluginx = { path = "../../", features = ["server"] }
 shared = { path = "../shared" }
+tokio = { version = "1", features = ["full"] }

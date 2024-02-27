@@ -11,17 +11,16 @@ use tokio::{
     net::UnixStream,
     process::Child,
 };
-use tonic::transport::{Channel, Endpoint, Uri};
+use tonic::transport::{Channel, Uri};
 use tower::service_fn;
 
+use self::config::ClientConfig;
 use crate::{
     constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT},
     handshake::HandshakeMessage,
     plugin::PluginClient,
     Network,
 };
-
-use self::config::ClientConfig;
 
 pub struct ClientBuilder {
     handshake: HandshakeMessage,
@@ -95,7 +94,7 @@ impl ClientBuilder {
 
     pub fn build(self) -> Client {
         Client {
-            handshake:self.handshake,
+            handshake: self.handshake,
             proc: self.proc,
             plugins: self.plugins,
         }
@@ -103,7 +102,7 @@ impl ClientBuilder {
 }
 
 pub struct Client {
-    handshake:HandshakeMessage,
+    handshake: HandshakeMessage,
     proc: Child,
     plugins: HashMap<TypeId, Box<dyn Any>>,
 }

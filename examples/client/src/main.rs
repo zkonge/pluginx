@@ -5,12 +5,8 @@ use tokio::{process::Command, select};
 
 async fn amain() {
     let mut builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
-        handshake_config: pluginx::HandshakeConfig {
-            protocol_version: 1,
-            magic_cookie_key: std::borrow::Cow::Borrowed("BASIC_PLUGIN"),
-            magic_cookie_value: std::borrow::Cow::Borrowed("hello"),
-        },
-        cmd: Command::new("/root/code/pluginx/kv-plugin"),
+        handshake_config: shared::HANDSHAKE_CONFIG,
+        cmd: Command::new("/root/code/pluginx/server"),
         broker_multiplex: false,
         port_range: None,
         startup_timeout: Duration::from_secs(1),
@@ -42,7 +38,7 @@ async fn amain() {
                 break;
             }
             _ = tokio::time::sleep(Duration::from_secs(1)) => {}
-        
+
         }
     }
 }

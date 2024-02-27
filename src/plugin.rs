@@ -1,6 +1,12 @@
-use std::future::Future;
+use std::{convert::Infallible, future::Future};
 
-use tonic::transport::Channel;
+use http::{Request, Response};
+use tonic::{
+    body::BoxBody,
+    server::NamedService,
+    transport::{Body, Channel},
+};
+use tower_service::Service;
 
 pub trait PluginClient {
     type Client: Clone;
@@ -9,7 +15,13 @@ pub trait PluginClient {
 }
 
 pub trait PluginServer {
-    type Server: Clone;
+    // type Fut: Send + 'static;
+    // type Err: Into<Box<dyn std::error::Error + Send + Sync>> + Send;
+    type Server: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+        + NamedService
+        + Clone
+        + Send
+        + 'static;
 
     fn server(&self) -> impl Future<Output = Self::Server> + Send;
 }

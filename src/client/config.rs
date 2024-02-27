@@ -1,6 +1,5 @@
-use std::{collections::HashMap, ops::RangeInclusive};
+use std::{ops::RangeInclusive, time::Duration};
 
-use std::time::Duration;
 use tokio::process::Command;
 
 use crate::handshake::HandshakeConfig;
@@ -12,7 +11,3 @@ pub struct ClientConfig {
     pub port_range: Option<RangeInclusive<u16>>,
     pub startup_timeout: Duration,
 }
-
-// fn s(){
-// Command::new("./").arg("arg").output()
-// }
