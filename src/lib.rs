@@ -7,4 +7,4 @@ pub mod runner;
 pub mod server;
 
 pub use handshake::*;
-pub use tonic::{async_trait, Request, Response, Status};
+pub use tonic::{async_trait, server::NamedService, Request, Response, Status, Streaming};

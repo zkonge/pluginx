@@ -18,7 +18,7 @@ use tonic::{
 use tonic_health::ServingStatus;
 use tower_service::Service;
 
-use self::{builtin::GrpcStdioWriterMaker, config::ServerConfig};
+use self::config::ServerConfig;
 use crate::{constant::PLUGIN_UNIX_SOCKET_DIR, HandshakeMessage, Network, Protocol};
 
 pub struct Server {
@@ -41,6 +41,7 @@ this as a bug."
             );
             exit(-1);
         }
+
         if env::var(hc.magic_cookie_key.as_ref()).as_deref() != Ok(hc.magic_cookie_value.as_ref()) {
             eprintln!(
                 r"This binary is a plugin. These are not meant to be executed directly.
@@ -50,12 +51,10 @@ load any plugins automatically."
             exit(-1);
         }
 
-        let uds_socket_dir = std::env::var(PLUGIN_UNIX_SOCKET_DIR);
-
         let avaiable_path = {
             let mut b = tempfile::Builder::new();
             let b = b.prefix("plugin-");
-            let f = if let Ok(dir) = uds_socket_dir {
+            let f = if let Ok(dir) = std::env::var(PLUGIN_UNIX_SOCKET_DIR) {
                 b.tempfile_in(dir)
             } else {
                 b.tempfile()
@@ -83,13 +82,6 @@ load any plugins automatically."
         self.routes.add_service(plugin);
     }
 
-    pub async fn tracing_writer_maker(&mut self) -> GrpcStdioWriterMaker {
-        // TODO: only allow one tracing writer
-        let (svc, maker) = builtin::Stdio::new();
-        self.routes.add_service(svc);
-        maker
-    }
-
     pub async fn run(mut self) -> io::Result<()> {
         // health service
         let (mut health_reporter, health_server) = tonic_health::server::health_reporter();
@@ -102,12 +94,21 @@ load any plugins automatically."
         let (svc, exit_notifier) = builtin::Controller::new();
         self.routes.add_service(svc);
 
+        // broker service
+        self.routes.add_service(builtin::Broker::new());
+
+        // pending stdio service, just placehelder, not use it
+        self.routes.add_service(builtin::Stdio::new());
+
         let uds = UnixListenerStream::new(UnixListener::bind(&self.socket_path)?);
 
-        let server = TonicServer::builder().add_routes(mem::take(&mut self.routes).routes());
-        let server = tokio::spawn(server.serve_with_incoming_shutdown(uds, async {
-            let _ = exit_notifier.await;
-        }));
+        let server = tokio::spawn(
+            TonicServer::builder()
+                .add_routes(mem::take(&mut self.routes).routes())
+                .serve_with_incoming_shutdown(uds, async {
+                    let _ = exit_notifier.await;
+                }),
+        );
 
         let handshake_message = HandshakeMessage {
             core_protocol: 1,
