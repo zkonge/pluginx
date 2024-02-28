@@ -17,9 +17,8 @@ use tower::service_fn;
 use self::config::ClientConfig;
 use crate::{
     constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT},
-    handshake::HandshakeMessage,
+    handshake::{HandshakeMessage, Network},
     plugin::PluginClient,
-    Network,
 };
 
 pub struct ClientBuilder {

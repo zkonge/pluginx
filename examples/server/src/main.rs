@@ -1,7 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
-use pluginx::{server::config::ServerConfig, Request, Response, Status};
-use shared::{Empty, GetRequest, GetResponse, PutRequest};
+use pluginx::{
+    server::{config::ServerConfig, Server},
+    Request, Response, Status,
+};
+use shared::{kv_server::KvServer, Empty, GetRequest, GetResponse, PutRequest};
 use tokio::sync::Mutex;
 
 struct KvImpl(Mutex<HashMap<String, Vec<u8>>>);
@@ -27,22 +30,29 @@ impl shared::kv_server::Kv for KvImpl {
 }
 
 async fn amain() {
-    let mut server = pluginx::server::Server::new(ServerConfig {
+    let mut server = Server::new(ServerConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
     })
+    .await
     .unwrap();
 
     server
-        .add_plugin(shared::kv_server::KvServer::new(KvImpl(Default::default())))
+        .add_plugin(KvServer::new(KvImpl(Default::default())))
         .await;
+
+    let stdio = server.stdio_handler();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        stdio.write(1, b"hello".to_vec()).await.unwrap();
+    });
 
     server.run().await.unwrap()
 }
 
 fn main() {
-    let rt = tokio::runtime::Builder::new_current_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .unwrap();
-    rt.block_on(amain());
+        .unwrap()
+        .block_on(amain());
 }

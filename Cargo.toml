@@ -11,6 +11,7 @@ http = "0.2.11" # tonic needs it :(
 http-body = "1.0.0"
 prost = "0.12.3"
 prost-types = "0.12.3"
+rand = "0.8.5"
 serde = { version = "1.0.197", features = ["derive"] }
 tempfile = "3.10.1"
 thiserror = "1.0.57"
