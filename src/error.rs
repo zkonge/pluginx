@@ -8,4 +8,7 @@ pub enum PluginxError {
     TokioTaskError(#[from] tokio::task::JoinError),
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    HandshakeError(#[from] crate::handshake::HandshakeError),
 }
