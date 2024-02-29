@@ -4,49 +4,50 @@ use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};
 
 async fn amain() {
-    let mut builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
+    let builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
         cmd: Command::new("/root/code/pluginx/server"),
         broker_multiplex: false,
         port_range: None,
         startup_timeout: Duration::from_secs(1),
     })
-    .await;
-    builder.add_plugin(shared::KvPlugin).await;
-    let client = builder.build();
+    .await
+    .unwrap();
+    let client = builder.add_plugin(shared::KvPlugin).await.build();
 
-    let mut client = client.dispense::<shared::KvPlugin>().unwrap();
-    dbg!(client
+    let mut kv_client = client.dispense::<shared::KvPlugin>().unwrap();
+
+    // 1. put a data
+    kv_client
         .put(PutRequest {
-            key: "aaa".to_string(),
-            value: b"aaa".to_vec()
+            key: "aaa".into(),
+            value: b"value".into(),
         })
         .await
-        .unwrap());
+        .unwrap();
+
+    // 2. try read data
     loop {
-        let resp = client
-            .get(GetRequest {
-                key: "aaa".to_string(),
-            })
-            .await
-            .unwrap();
-        dbg!(resp);
+        let resp = kv_client.get(GetRequest { key: "aaa".into() }).await.unwrap();
+        let resp = resp.into_inner();
+
+        println!("aaa = {:?}", resp.value);
 
         // ctrlc or infinity loop sleep 1s
         select! {
             _ = tokio::signal::ctrl_c() => {
+                client.shutdown().await;
                 break;
             }
             _ = tokio::time::sleep(Duration::from_secs(1)) => {}
-
         }
     }
 }
 
 fn main() {
-    let rt = tokio::runtime::Builder::new_current_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .unwrap();
-    rt.block_on(amain());
+        .unwrap()
+        .block_on(amain());
 }

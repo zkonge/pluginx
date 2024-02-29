@@ -67,7 +67,7 @@ pub struct StdioClient {
 }
 
 impl StdioClient {
-    pub async fn new(channel: Channel) -> Self {
+    pub fn new(channel: Channel) -> Self {
         let client = GrpcStdioClient::new(channel);
         Self { client }
     }
