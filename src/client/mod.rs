@@ -118,7 +118,7 @@ impl Client {
 
 impl Drop for Client {
     fn drop(&mut self) {
-        let _ = self.proc.kill();
+        _ = self.proc.kill();
         match &self.handshake.network {
             Network::Tcp(_) => {}
             Network::Unix(path) => {
