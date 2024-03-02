@@ -18,7 +18,10 @@ use tonic_health::ServingStatus;
 use tower_service::Service;
 
 use self::config::ServerConfig;
-use crate::{handshake::{HandshakeMessage, Network, Protocol}, meta_plugin, PluginxError};
+use crate::{
+    handshake::{HandshakeMessage, Network, Protocol},
+    meta_plugin, PluginxError,
+};
 
 enum TransportProvider {
     Unix(UnixListener),

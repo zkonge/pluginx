@@ -28,7 +28,10 @@ async fn amain() {
 
     // 2. try read data
     loop {
-        let resp = kv_client.get(GetRequest { key: "aaa".into() }).await.unwrap();
+        let resp = kv_client
+            .get(GetRequest { key: "aaa".into() })
+            .await
+            .unwrap();
         let resp = resp.into_inner();
 
         println!("aaa = {:?}", resp.value);
