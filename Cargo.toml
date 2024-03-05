@@ -1,6 +1,7 @@
 [package]
 name = "pluginx"
 version = "0.0.1"
+authors = ["zkonge <zkonge@outlook.com>"]
 edition = "2021"
 
 [dependencies]
