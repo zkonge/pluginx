@@ -5,7 +5,6 @@ pub mod handshake;
 pub mod meta_plugin;
 pub mod plugin;
 pub mod proto;
-pub mod runner;
 pub mod server;
 
 pub use error::PluginxError;
