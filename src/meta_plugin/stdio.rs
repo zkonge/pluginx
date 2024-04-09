@@ -1,9 +1,8 @@
 use std::sync::Mutex;
 
-use futures::Stream;
 use tokio::sync::mpsc::{self, error::SendError, Receiver, Sender};
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::Channel, Request, Response, Status};
+use tonic::{transport::Channel, Request, Response, Status, Streaming};
 
 use crate::proto::{
     grpc_stdio_client::GrpcStdioClient,
@@ -72,7 +71,7 @@ impl StdioClient {
         Self { client }
     }
 
-    pub async fn read(&mut self) -> Result<impl Stream<Item = Result<StdioData, Status>>, Status> {
+    pub async fn read(&mut self) -> Result<Streaming<StdioData>, Status> {
         let s = self
             .client
             .stream_stdio(Request::new(()))

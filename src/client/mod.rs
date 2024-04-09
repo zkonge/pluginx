@@ -5,6 +5,7 @@ use std::{
     process::Stdio,
 };
 
+use futures::{Stream, StreamExt};
 use hashbrown::HashMap;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -22,6 +23,7 @@ use crate::{
     handshake::{HandshakeError, HandshakeMessage, Network},
     meta_plugin::{ControllerClient, StdioClient},
     plugin::PluginClient,
+    proto::stdio_data,
     PluginxError,
 };
 
@@ -118,9 +120,17 @@ impl ClientBuilder {
             plugins: self.plugins,
 
             controller: self.controller,
-            stdio: self.stdio,
+            stdio: Some(self.stdio),
         }
     }
+}
+
+#[derive(Default, Debug)]
+pub enum StdioData {
+    #[default]
+    Invalid,
+    Stdout(Vec<u8>),
+    Stderr(Vec<u8>),
 }
 
 pub struct Client {
@@ -130,8 +140,7 @@ pub struct Client {
     plugins: HashMap<TypeId, Box<dyn Any>>,
 
     controller: ControllerClient,
-    #[allow(unused)]
-    stdio: StdioClient,
+    stdio: Option<StdioClient>,
 }
 
 impl Client {
@@ -141,6 +150,17 @@ impl Client {
             .get(&id)
             .and_then(|p| p.downcast_ref::<P::Client>())
             .cloned()
+    }
+
+    /// stdout/stderr data sent from plugin host, it can be only called once, or it will return [`None`]
+    pub async fn stdio(&mut self) -> Option<impl Stream<Item = StdioData>> {
+        let s = self.stdio.take()?.read().await.ok()?;
+
+        Some(s.map(|x| x.unwrap_or_default()).map(|x| match x.channel() {
+            stdio_data::Channel::Invalid => StdioData::Invalid,
+            stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
+            stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
+        }))
     }
 
     pub async fn shutdown(mut self) {
