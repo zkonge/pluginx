@@ -31,16 +31,21 @@ pub async fn find_available_tcp_listener() -> io::Result<TcpListener> {
 }
 
 pub fn find_available_unix_socket_listener() -> io::Result<UnixListener> {
-    let path = {
+    let path = loop {
         let mut b = tempfile::Builder::new();
         let b = b.prefix(PLUGIN_UNIX_SOCKET_PREFIX);
 
-        let f = if let Ok(dir) = env::var(PLUGIN_UNIX_SOCKET_DIR) {
+        let r = if let Ok(dir) = env::var(PLUGIN_UNIX_SOCKET_DIR) {
             b.tempfile_in(dir)
         } else {
             b.tempfile()
-        }?;
-        f.path().to_owned()
+        };
+
+        match r {
+            Ok(f) => break f.path().to_owned(),
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
     };
 
     UnixListener::bind(path)

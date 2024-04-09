@@ -1,5 +1,5 @@
 pub mod config;
-pub mod util;
+pub mod utils;
 
 use std::{convert::Infallible, env, fs, io, mem, process::exit};
 
@@ -64,9 +64,9 @@ load any plugins automatically."
         }
 
         let transport_provider = if cfg!(windows) {
-            TransportProvider::Tcp(util::find_available_tcp_listener().await?)
+            TransportProvider::Tcp(utils::find_available_tcp_listener().await?)
         } else {
-            TransportProvider::Unix(util::find_available_unix_socket_listener()?)
+            TransportProvider::Unix(utils::find_available_unix_socket_listener()?)
         };
 
         let mut rb = RoutesBuilder::default();
