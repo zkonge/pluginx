@@ -15,8 +15,6 @@ pub trait PluginClient {
 }
 
 pub trait PluginServer {
-    // type Fut: Send + 'static;
-    // type Err: Into<Box<dyn std::error::Error + Send + Sync>> + Send;
     type Server: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
         + NamedService
         + Clone
