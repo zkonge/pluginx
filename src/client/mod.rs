@@ -61,11 +61,16 @@ impl ClientBuilder {
             .spawn()?;
 
         // 3. wait for handshake
-        let mut reader = BufReader::new(plugin_process.stdout.as_mut().unwrap());
+        let mut reader = BufReader::new(
+            plugin_process
+                .stdout
+                .as_mut()
+                .expect("stdout is pipe, must success"),
+        );
         let mut line = String::new();
         select! {
             _ = time::sleep(config.startup_timeout) => {
-                return Err(PluginxError::HandshakeError(HandshakeError::StarupTimeout));
+                return Err(HandshakeError::StarupTimeout.into());
             }
             _ = reader.read_line(&mut line) => {}
         }
@@ -78,7 +83,10 @@ impl ClientBuilder {
                     .scheme("http")
                     .authority(addr.to_string())
                     .build()
-                    .map_err(|_| HandshakeError::InvalidNetwork)?;
+                    .map_err(|_| PluginxError::HandshakeError {
+                        error: HandshakeError::InvalidNetwork,
+                        message: addr.to_string(),
+                    })?;
                 Channel::builder(uri).connect().await?
             }
             Network::Unix(path) => {
