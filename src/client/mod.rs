@@ -8,7 +8,7 @@ use std::{
 use futures::{Stream, StreamExt};
 use hashbrown::HashMap;
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
+    io::AsyncReadExt,
     net::UnixStream,
     process::{Child, ChildStderr, ChildStdout},
     select, time,
@@ -61,20 +61,24 @@ impl ClientBuilder {
             .spawn()?;
 
         // 3. wait for handshake
-        let mut reader = BufReader::new(
-            plugin_process
-                .stdout
-                .as_mut()
-                .expect("stdout is pipe, must success"),
-        );
-        let mut line = String::new();
+        let stdout = plugin_process
+            .stdout
+            .as_mut()
+            .expect("stdout is pipe, must success");
+        let mut buf = Vec::new();
         select! {
             _ = time::sleep(config.startup_timeout) => {
                 return Err(HandshakeError::StarupTimeout.into());
             }
-            _ = reader.read_line(&mut line) => {}
+            _ = stdout.read_buf(&mut buf) => {}
         }
-        let handshake = HandshakeMessage::parse(&line).unwrap();
+        let stdout = String::from_utf8_lossy(&buf);
+        let handshake = HandshakeMessage::parse(stdout.trim()).map_err(|error| {
+            PluginxError::HandshakeError {
+                error,
+                message: stdout.to_string(),
+            }
+        })?;
 
         // 4. connect with gRPC
         let channel = match &handshake.network {
