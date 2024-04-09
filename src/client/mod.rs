@@ -10,7 +10,7 @@ use hashbrown::HashMap;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     net::UnixStream,
-    process::Child,
+    process::{Child, ChildStderr, ChildStdout},
     select, time,
 };
 pub use tonic::transport::Channel;
@@ -169,6 +169,16 @@ impl Client {
             stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
             stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
         }))
+    }
+
+    /// raw stdout from process instead of RPC, can only be called once.
+    pub fn raw_stdout(&mut self) -> Option<ChildStdout> {
+        self.plugin_host.stdout.take()
+    }
+
+    /// raw stderr from process instead of RPC, can only be called once.
+    pub fn raw_stderr(&mut self) -> Option<ChildStderr> {
+        self.plugin_host.stderr.take()
     }
 
     pub async fn shutdown(mut self) {
