@@ -12,7 +12,8 @@ use tokio::{
     process::Child,
     select, time,
 };
-use tonic::transport::{Channel, Uri};
+pub use tonic::transport::Channel;
+use tonic::transport::Uri;
 use tower::service_fn;
 
 use self::config::ClientConfig;
