@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use pluginx::{
+    plugin::PluginServer,
     server::{config::ServerConfig, Server},
     Request, Response, Status,
 };
@@ -29,6 +30,16 @@ impl shared::kv_server::Kv for KvImpl {
     }
 }
 
+struct KvPlugin;
+
+impl PluginServer for KvPlugin {
+    type Server = KvServer<KvImpl>;
+
+    async fn server(&self) -> Self::Server {
+        KvServer::new(KvImpl(Default::default()))
+    }
+}
+
 async fn amain() {
     let mut server = Server::new(ServerConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
@@ -36,7 +47,7 @@ async fn amain() {
     .await
     .unwrap();
 
-    server.add_plugin(KvServer::new(KvImpl(Default::default())));
+    server.add_plugin(KvPlugin).await;
 
     let stdio = server.stdio_handler();
     tokio::spawn(async move {

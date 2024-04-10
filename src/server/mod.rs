@@ -1,10 +1,10 @@
 pub mod config;
 pub mod utils;
 
-use std::{convert::Infallible, env, process::exit};
+use std::{env, process::exit};
 
-use http::{Request, Response};
-use tonic::{body::BoxBody, server::NamedService, transport::Body};
+use http::Request;
+use tonic::transport::Body;
 use tonic_health::ServingStatus;
 use tower_service::Service;
 
@@ -12,7 +12,9 @@ use self::config::ServerConfig;
 use crate::{
     common::server::{Server as InnerServer, ServerConfig as InnerServerConfig},
     handshake::{HandshakeMessage, Protocol},
-    meta_plugin, PluginxError,
+    meta_plugin,
+    plugin::PluginServer,
+    PluginxError,
 };
 
 pub struct Server {
@@ -96,16 +98,13 @@ load any plugins automatically."
     }
 
     #[inline]
-    pub fn add_plugin<S>(&mut self, plugin: S) -> &mut Self
+    pub async fn add_plugin<P: PluginServer + 'static>(&mut self, plugin: P) -> &mut Self
     where
-        S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
-            + NamedService
-            + Clone
-            + Send
-            + 'static,
-        S::Future: Send + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
+        <P::Server as Service<Request<Body>>>::Future: Send + 'static,
+        <P::Server as Service<Request<Body>>>::Error:
+            Into<Box<dyn std::error::Error + Send + Sync>> + Send,
     {
+        let plugin = plugin.server().await;
         self.server.add_service(plugin);
         self
     }

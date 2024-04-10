@@ -4,7 +4,7 @@ use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};
 
 async fn amain() {
-    let path = args().skip(1).next().expect("specify the plugin path");
+    let path = args().nth(1).expect("specify the plugin path");
 
     let mut builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
