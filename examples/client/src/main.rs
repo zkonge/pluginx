@@ -1,12 +1,14 @@
-use std::time::Duration;
+use std::{env::args, time::Duration};
 
 use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};
 
 async fn amain() {
+    let path = args().skip(1).next().expect("specify the plugin path");
+
     let mut builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
-        cmd: Command::new("/root/code/pluginx/server"),
+        cmd: Command::new(path),
         broker_multiplex: false,
         port_range: None,
         startup_timeout: Duration::from_secs(1),
