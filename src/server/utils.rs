@@ -1,16 +1,13 @@
-use std::{
-    env,
-    io::{self, ErrorKind},
-    net::{Ipv4Addr, SocketAddrV4},
+use std::{env, io, path::PathBuf};
+
+use crate::{
+    common::server::TransportConfig,
+    constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT, PLUGIN_UNIX_SOCKET_DIR},
 };
-
-use tokio::net::{TcpListener, UnixListener};
-
-use crate::constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT, PLUGIN_UNIX_SOCKET_DIR};
 
 const PLUGIN_UNIX_SOCKET_PREFIX: &str = "plugin-";
 
-pub async fn find_available_tcp_listener() -> io::Result<TcpListener> {
+pub(crate) fn tcp_transport_config_from_env() -> io::Result<TransportConfig> {
     let port_start = env::var(PLUGIN_MIN_PORT).ok().and_then(|x| x.parse().ok());
     let port_end = env::var(PLUGIN_MAX_PORT).ok().and_then(|x| x.parse().ok());
 
@@ -19,34 +16,17 @@ pub async fn find_available_tcp_listener() -> io::Result<TcpListener> {
         _ => 10000..=25000u16,
     };
 
-    for port in port_range {
-        match TcpListener::bind(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port)).await {
-            Ok(listener) => return Ok(listener),
-            Err(e) if e.kind() == ErrorKind::AddrInUse => continue,
-            e @ Err(_) => return e,
-        }
-    }
-
-    Err(ErrorKind::AddrInUse.into())
+    Ok(TransportConfig::Tcp { port_range })
 }
 
-pub fn find_available_unix_socket_listener() -> io::Result<UnixListener> {
-    let path = loop {
-        let mut b = tempfile::Builder::new();
-        let b = b.prefix(PLUGIN_UNIX_SOCKET_PREFIX);
+pub(crate) fn unix_transport_config_from_env() -> io::Result<TransportConfig> {
+    let dir = env::var(PLUGIN_UNIX_SOCKET_DIR)
+        .map(PathBuf::from)
+        .map(Into::into)
+        .ok();
 
-        let r = if let Ok(dir) = env::var(PLUGIN_UNIX_SOCKET_DIR) {
-            b.tempfile_in(dir)
-        } else {
-            b.tempfile()
-        };
-
-        match r {
-            Ok(f) => break f.path().to_owned(),
-            Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        }
-    };
-
-    UnixListener::bind(path)
+    Ok(TransportConfig::Unix {
+        prefix: PLUGIN_UNIX_SOCKET_PREFIX.into(),
+        dir,
+    })
 }

@@ -1,24 +1,18 @@
 pub mod config;
 
-use std::{
-    any::{Any, TypeId},
-    process::Stdio,
-};
+use std::process::Stdio;
 
 use futures::{Stream, StreamExt};
-use hashbrown::HashMap;
 use tokio::{
     io::AsyncReadExt,
-    net::UnixStream,
     process::{Child, ChildStderr, ChildStdout},
     select, time,
 };
 pub use tonic::transport::Channel;
-use tonic::transport::Uri;
-use tower::service_fn;
 
 use self::config::ClientConfig;
 use crate::{
+    common::client::Client as InnerClient,
     constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT},
     handshake::{HandshakeError, HandshakeMessage, Network},
     meta_plugin::{ControllerClient, StdioClient},
@@ -30,11 +24,11 @@ use crate::{
 pub struct ClientBuilder {
     handshake: HandshakeMessage,
     plugin_host: Child,
-    channel: Channel,
-    plugins: HashMap<TypeId, Box<dyn Any>>,
 
     controller: ControllerClient,
     stdio: StdioClient,
+
+    client: InnerClient,
 }
 
 impl ClientBuilder {
@@ -47,7 +41,7 @@ impl ClientBuilder {
         );
 
         // 2. spawn plugin process
-        let mut plugin_process = config
+        let mut plugin_host = config
             .cmd
             .envs([
                 (magic_key, magic_value),
@@ -61,7 +55,7 @@ impl ClientBuilder {
             .spawn()?;
 
         // 3. wait for handshake
-        let stdout = plugin_process
+        let stdout = plugin_host
             .stdout
             .as_mut()
             .expect("stdout is pipe, must success");
@@ -81,47 +75,26 @@ impl ClientBuilder {
         })?;
 
         // 4. connect with gRPC
-        let channel = match &handshake.network {
-            Network::Tcp(addr) => {
-                let uri = Uri::builder()
-                    .scheme("http")
-                    .authority(addr.to_string())
-                    .build()
-                    .map_err(|_| PluginxError::HandshakeError {
-                        error: HandshakeError::InvalidNetwork,
-                        message: addr.to_string(),
-                    })?;
-                Channel::builder(uri).connect().await?
-            }
-            Network::Unix(path) => {
-                let path = path.clone();
-                Channel::from_static("http://[::1]")
-                    .connect_with_connector(service_fn(move |_: Uri| {
-                        UnixStream::connect(path.clone())
-                    }))
-                    .await?
-            }
-        };
+        let client = InnerClient::new(&handshake.network).await?;
 
         // 5. load builtin plugins
-        let controller = ControllerClient::new(channel.clone());
-        let stdio = StdioClient::new(channel.clone());
+        let controller = ControllerClient::new(client.channel().clone());
+        let stdio = StdioClient::new(client.channel().clone());
 
         Ok(Self {
             handshake,
-            plugin_host: plugin_process,
-            channel,
-            plugins: HashMap::new(),
+            plugin_host,
 
             controller,
             stdio,
+
+            client,
         })
     }
 
-    pub async fn add_plugin<P: PluginClient + 'static>(mut self, plugin: P) -> Self {
-        let plugin = plugin.client(self.channel.clone()).await;
-        self.plugins
-            .insert(TypeId::of::<P::Client>(), Box::new(plugin));
+    pub async fn add_plugin<P: PluginClient + 'static>(&mut self, plugin: P) -> &mut Self {
+        let plugin = plugin.client(self.client.channel().clone()).await;
+        self.client.add_service(plugin);
         self
     }
 
@@ -129,10 +102,11 @@ impl ClientBuilder {
         Client {
             handshake: self.handshake,
             plugin_host: self.plugin_host,
-            plugins: self.plugins,
 
             controller: self.controller,
             stdio: Some(self.stdio),
+
+            client: self.client,
         }
     }
 }
@@ -147,21 +121,17 @@ pub enum StdioData {
 
 pub struct Client {
     handshake: HandshakeMessage,
-    #[allow(unused)]
     plugin_host: Child,
-    plugins: HashMap<TypeId, Box<dyn Any>>,
 
     controller: ControllerClient,
     stdio: Option<StdioClient>,
+
+    client: InnerClient,
 }
 
 impl Client {
     pub fn dispense<P: PluginClient + 'static>(&self) -> Option<P::Client> {
-        let id = TypeId::of::<P::Client>();
-        self.plugins
-            .get(&id)
-            .and_then(|p| p.downcast_ref::<P::Client>())
-            .cloned()
+        self.client.dispense::<P::Client>()
     }
 
     /// stdout/stderr data sent from plugin host, it can be only called once, or it will return [`None`]

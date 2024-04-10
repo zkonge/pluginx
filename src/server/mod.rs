@@ -1,42 +1,28 @@
 pub mod config;
 pub mod utils;
 
-use std::{convert::Infallible, env, fs, io, mem, process::exit};
+use std::{convert::Infallible, env, process::exit};
 
 use http::{Request, Response};
-use tokio::net::{TcpListener, UnixListener};
-use tokio_stream::wrappers::UnixListenerStream;
-use tonic::{
-    body::BoxBody,
-    server::NamedService,
-    transport::{
-        server::{RoutesBuilder, Server as TonicServer, TcpIncoming},
-        Body,
-    },
-};
+use tonic::{body::BoxBody, server::NamedService, transport::Body};
 use tonic_health::ServingStatus;
 use tower_service::Service;
 
 use self::config::ServerConfig;
 use crate::{
-    handshake::{HandshakeMessage, Network, Protocol},
+    common::server::{Server as InnerServer, ServerConfig as InnerServerConfig},
+    handshake::{HandshakeMessage, Protocol},
     meta_plugin, PluginxError,
 };
 
-enum TransportProvider {
-    Unix(UnixListener),
-    Tcp(TcpListener),
-}
-
 pub struct Server {
     protocol_version: u32,
-    transport_provider: TransportProvider,
 
     exit_signal: meta_plugin::ControllerExitSignal,
     stdio_handler: meta_plugin::StdioHandler,
     broker_handler: meta_plugin::BrokerHandler,
 
-    routes_builder: RoutesBuilder,
+    server: InnerServer,
 }
 
 impl Server {
@@ -44,7 +30,7 @@ impl Server {
         ServerConfig {
             handshake_config: hc,
         }: ServerConfig,
-    ) -> io::Result<Self> {
+    ) -> Result<Self, PluginxError> {
         if hc.magic_cookie_key.is_empty() || hc.magic_cookie_value.is_empty() {
             eprintln!(
                 r"Misconfigured ServeConfig given to serve this plugin: no magic cookie
@@ -63,37 +49,37 @@ load any plugins automatically."
             exit(-1);
         }
 
-        let transport_provider = if cfg!(windows) {
-            TransportProvider::Tcp(utils::find_available_tcp_listener().await?)
+        let transport_config = if cfg!(windows) {
+            utils::tcp_transport_config_from_env()?
         } else {
-            TransportProvider::Unix(utils::find_available_unix_socket_listener()?)
+            utils::unix_transport_config_from_env()?
         };
 
-        let mut rb = RoutesBuilder::default();
+        let mut server = InnerServer::new(InnerServerConfig { transport_config }).await?;
 
-        let (mut rep, svc) = tonic_health::server::health_reporter();
-        rep.set_service_status("plugin", ServingStatus::Serving)
+        let (mut reporter, svc) = tonic_health::server::health_reporter();
+        reporter
+            .set_service_status("plugin", ServingStatus::Serving)
             .await;
-        rb.add_service(svc);
+        server.add_service(svc);
 
         let (svc, exit_signal) = meta_plugin::ControllerServer::new();
-        rb.add_service(svc);
+        server.add_service(svc);
 
         let (svc, stdio_handler) = meta_plugin::StdioServer::new();
-        rb.add_service(svc);
+        server.add_service(svc);
 
         let (svc, broker_handler) = meta_plugin::BrokerServer::new();
-        rb.add_service(svc);
+        server.add_service(svc);
 
         Ok(Self {
             protocol_version: hc.protocol_version,
-            transport_provider,
 
             exit_signal,
             stdio_handler,
             broker_handler,
 
-            routes_builder: rb,
+            server,
         })
     }
 
@@ -109,7 +95,8 @@ load any plugins automatically."
         self.broker_handler.clone()
     }
 
-    pub async fn add_plugin<S>(&mut self, plugin: S) -> &mut Self
+    #[inline]
+    pub fn add_plugin<S>(&mut self, plugin: S) -> &mut Self
     where
         S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
             + NamedService
@@ -119,21 +106,12 @@ load any plugins automatically."
         S::Future: Send + 'static,
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
     {
-        self.routes_builder.add_service(plugin);
+        self.server.add_service(plugin);
         self
     }
 
-    pub async fn run(mut self) -> Result<(), PluginxError> {
-        let mut unix_socket_path = None; // for cleanup
-
-        let network = match &self.transport_provider {
-            TransportProvider::Unix(listener) => {
-                let path = listener.local_addr()?.as_pathname().unwrap().to_owned();
-                unix_socket_path = Some(path.clone());
-                Network::Unix(path)
-            }
-            TransportProvider::Tcp(listener) => Network::Tcp(listener.local_addr()?),
-        };
+    pub async fn run(self) -> Result<(), PluginxError> {
+        let network = self.server.network()?;
 
         let hs = HandshakeMessage {
             core_protocol: 1,
@@ -143,33 +121,8 @@ load any plugins automatically."
         };
         println!("{hs}");
 
-        let routes = mem::take(&mut self.routes_builder).routes();
-        let exit_signal = self.exit_signal();
+        let exiter = self.exit_signal();
 
-        match self.transport_provider {
-            TransportProvider::Unix(u) => {
-                let incoming = UnixListenerStream::new(u);
-
-                TonicServer::builder()
-                    .add_routes(routes)
-                    .serve_with_incoming_shutdown(incoming, exit_signal.wait())
-                    .await?;
-
-                if let Some(path) = unix_socket_path {
-                    _ = fs::remove_file(path);
-                }
-            }
-            TransportProvider::Tcp(t) => {
-                let server = TonicServer::builder().add_routes(routes);
-                let incoming =
-                    TcpIncoming::from_listener(t, true, None).expect("local_addr must existed");
-
-                server
-                    .serve_with_incoming_shutdown(incoming, exit_signal.wait())
-                    .await?;
-            }
-        }
-
-        Ok(())
+        self.server.run(exiter.wait()).await
     }
 }

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, future::Future};
+use std::borrow::Cow;
 
 use pluginx::{handshake::HandshakeConfig, plugin::PluginClient};
 use tonic::transport::Channel;
@@ -17,7 +17,7 @@ pub struct KvPlugin;
 impl PluginClient for KvPlugin {
     type Client = kv_client::KvClient<Channel>;
 
-    fn client(&self, channel: Channel) -> impl Future<Output = Self::Client> + Send {
-        async { kv_client::KvClient::new(channel) }
+    async fn client(&self, channel: Channel) -> Self::Client {
+        kv_client::KvClient::new(channel)
     }
 }

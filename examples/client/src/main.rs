@@ -4,7 +4,7 @@ use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};
 
 async fn amain() {
-    let builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
+    let mut builder = pluginx::client::ClientBuilder::new(pluginx::client::config::ClientConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
         cmd: Command::new("/root/code/pluginx/server"),
         broker_multiplex: false,
@@ -13,7 +13,9 @@ async fn amain() {
     })
     .await
     .unwrap();
-    let client = builder.add_plugin(shared::KvPlugin).await.build();
+    builder.add_plugin(shared::KvPlugin).await;
+
+    let client = builder.build();
 
     let mut kv_client = client.dispense::<shared::KvPlugin>().unwrap();
 

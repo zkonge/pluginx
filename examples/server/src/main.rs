@@ -36,9 +36,7 @@ async fn amain() {
     .await
     .unwrap();
 
-    server
-        .add_plugin(KvServer::new(KvImpl(Default::default())))
-        .await;
+    server.add_plugin(KvServer::new(KvImpl(Default::default())));
 
     let stdio = server.stdio_handler();
     tokio::spawn(async move {
