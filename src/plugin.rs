@@ -23,3 +23,23 @@ pub trait PluginServer {
 
     fn server(&self) -> impl Future<Output = Self::Server> + Send;
 }
+
+/// for those service doesn't need broker
+impl<T> PluginServer for T
+where
+    T: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+        + NamedService
+        + Clone
+        + Send
+        + Sync
+        + 'static,
+    T::Future: Send + 'static,
+    T::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
+{
+    type Server = T;
+
+    #[inline]
+    async fn server(&self) -> Self::Server {
+        self.clone()
+    }
+}
