@@ -9,7 +9,7 @@ use tonic::{
 use tower_service::Service;
 
 pub trait PluginClient {
-    type Client: Clone;
+    type Client: Clone + Send;
 
     fn client(&self, channel: Channel) -> impl Future<Output = Self::Client> + Send;
 }
