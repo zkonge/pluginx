@@ -1,9 +1,10 @@
 use std::any::{Any, TypeId};
 
+use futures::TryFutureExt;
 use hashbrown::HashMap;
-use http::Uri;
+use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Uri};
 use tower::service_fn;
 
 use crate::{
@@ -31,10 +32,10 @@ impl Client {
                 Channel::builder(uri).connect().await?
             }
             Network::Unix(path) => {
-                let path = path.clone();
+                let path = path.to_owned();
                 Channel::from_static("http://[::1]")
                     .connect_with_connector(service_fn(move |_: Uri| {
-                        UnixStream::connect(path.clone())
+                        UnixStream::connect(path.clone()).map_ok(TokioIo::new)
                     }))
                     .await?
             }

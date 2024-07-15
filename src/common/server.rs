@@ -6,10 +6,8 @@ use tokio_stream::wrappers::UnixListenerStream;
 use tonic::{
     body::BoxBody,
     server::NamedService,
-    transport::{
-        server::{RoutesBuilder, Server as TonicServer, TcpIncoming},
-        Body,
-    },
+    service::RoutesBuilder,
+    transport::server::{Server as TonicServer, TcpIncoming},
 };
 use tower::Service;
 
@@ -71,7 +69,7 @@ impl Server {
     #[inline]
     pub(crate) fn add_service<S>(&mut self, service: S) -> &mut Self
     where
-        S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+        S: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
             + NamedService
             + Clone
             + Send

@@ -4,7 +4,7 @@ pub mod utils;
 use std::{env, process::exit};
 
 use http::Request;
-use tonic::transport::Body;
+use tonic::body::BoxBody;
 use tonic_health::ServingStatus;
 use tower_service::Service;
 
@@ -100,8 +100,8 @@ load any plugins automatically."
     #[inline]
     pub async fn add_plugin<P: PluginServer + 'static>(&mut self, plugin: P) -> &mut Self
     where
-        <P::Server as Service<Request<Body>>>::Future: Send + 'static,
-        <P::Server as Service<Request<Body>>>::Error:
+        <P::Server as Service<Request<BoxBody>>>::Future: Send + 'static,
+        <P::Server as Service<Request<BoxBody>>>::Error:
             Into<Box<dyn std::error::Error + Send + Sync>> + Send,
     {
         let plugin = plugin.server().await;

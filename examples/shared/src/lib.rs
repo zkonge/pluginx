@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
-use pluginx::{handshake::HandshakeConfig, plugin::PluginClient};
-use tonic::transport::Channel;
+use pluginx::{client::Channel, handshake::HandshakeConfig, plugin::PluginClient};
 
 tonic::include_proto!("proto");
 
