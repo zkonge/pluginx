@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId};
 
+use ahash::AHashMap;
 use futures::TryFutureExt;
-use hashbrown::HashMap;
 use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Uri};
@@ -14,7 +14,7 @@ use crate::{
 
 pub(crate) struct Client {
     channel: Channel,
-    service: HashMap<TypeId, Box<dyn Any + Send>>,
+    service: AHashMap<TypeId, Box<dyn Any + Send>>,
 }
 
 impl Client {
@@ -43,7 +43,7 @@ impl Client {
 
         Ok(Self {
             channel,
-            service: HashMap::new(),
+            service: AHashMap::new(),
         })
     }
 

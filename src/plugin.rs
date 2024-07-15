@@ -2,7 +2,7 @@ use std::{convert::Infallible, future::Future};
 
 use http::{Request, Response};
 use tonic::{body::BoxBody, server::NamedService, transport::Channel};
-use tower_service::Service;
+use tower::Service;
 
 pub trait PluginClient {
     type Client: Clone + Send;

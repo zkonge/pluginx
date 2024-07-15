@@ -5,10 +5,10 @@ authors = ["Konge <zkonge@outlook.com>"]
 edition = "2021"
 
 [dependencies]
+futures = { version = "0.3.30", default-features = false, features = ["std"] }
+http = { version = "1.1.0", default-features = false }
+ahash = "0.8.11"
 bytes = "1.6.0"
-futures = "0.3.30"
-hashbrown = "0.14.3"
-http = "1.1.0"
 hyper-util = { version = "0.1.6", features = ["tokio"] }
 prost = "0.13.1"
 rand = "0.8.5"
@@ -21,8 +21,7 @@ tokio-stream = { version = "0.1.15", default-features = false, features = [
 ] }
 tonic = "0.12.0"
 tonic-health = "0.12.0"
-tower = "0.4.13"
-tower-service = "0.3.2"
+tower = { version = "0.4.13", default-features = false }
 
 [build-dependencies]
 tonic-build = "0.12.0"

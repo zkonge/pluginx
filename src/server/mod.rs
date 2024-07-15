@@ -6,7 +6,7 @@ use std::{env, process::exit};
 use http::Request;
 use tonic::body::BoxBody;
 use tonic_health::ServingStatus;
-use tower_service::Service;
+use tower::Service;
 
 use self::config::ServerConfig;
 use crate::{
