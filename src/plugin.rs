@@ -5,7 +5,7 @@ use tonic::{body::BoxBody, server::NamedService, transport::Channel};
 use tower::Service;
 
 pub trait PluginClient {
-    type Client: Clone + Send;
+    type Client: Clone + Send + Sync;
 
     fn client(&self, channel: Channel) -> impl Future<Output = Self::Client> + Send;
 }

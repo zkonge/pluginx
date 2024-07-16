@@ -14,7 +14,7 @@ use crate::{
 
 pub(crate) struct Client {
     channel: Channel,
-    service: AHashMap<TypeId, Box<dyn Any + Send>>,
+    service: AHashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl Client {
@@ -52,7 +52,10 @@ impl Client {
     }
 
     #[inline]
-    pub(crate) fn add_service<S: Clone + Send + 'static>(&mut self, service: S) -> &mut Self {
+    pub(crate) fn add_service<S: Clone + Send + Sync + 'static>(
+        &mut self,
+        service: S,
+    ) -> &mut Self {
         self.service.insert(TypeId::of::<S>(), Box::new(service));
         self
     }
