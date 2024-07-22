@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+futures = { version = "0.3.30", default-features = false, features = ["std"] }
 pluginx = { path = "../../", features = ["client"] }
 shared = { path = "../shared" }
 tokio = { version = "1", features = ["full"] }

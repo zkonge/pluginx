@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use pluginx::{
-    plugin::PluginServer,
+    meta_plugin::StdioType,
     server::{config::ServerConfig, Server},
     Request, Response, Status,
 };
@@ -17,7 +17,7 @@ impl shared::kv_server::Kv for KvImpl {
             Some(value) => Ok(Response::new(GetResponse {
                 value: value.to_owned(),
             })),
-            None => Err(Status::not_found("Key not found")),
+            None => Err(Status::not_found("key not found")),
         }
     }
 
@@ -30,16 +30,6 @@ impl shared::kv_server::Kv for KvImpl {
     }
 }
 
-struct KvPlugin;
-
-impl PluginServer for KvPlugin {
-    type Server = KvServer<KvImpl>;
-
-    async fn server(&self) -> Self::Server {
-        KvServer::new(KvImpl(Default::default()))
-    }
-}
-
 async fn amain() {
     let mut server = Server::new(ServerConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
@@ -47,12 +37,17 @@ async fn amain() {
     .await
     .unwrap();
 
-    server.add_plugin(KvPlugin).await;
+    server
+        .add_plugin(KvServer::new(KvImpl(Default::default())))
+        .await;
 
     let stdio = server.stdio_handler();
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_secs(5)).await;
-        stdio.write(1, b"hello".to_vec()).await.unwrap();
+        stdio
+            .write(StdioType::Stdout, b"hello".to_vec())
+            .await
+            .unwrap();
     });
 
     server.run().await.unwrap()

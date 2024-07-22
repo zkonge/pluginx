@@ -1,6 +1,7 @@
 use std::{env::args, time::Duration};
 
-use pluginx::client::{config::ClientConfig, ClientBuilder};
+use futures::StreamExt;
+use pluginx::client::{config::ClientConfig, ClientBuilder, StdioData};
 use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};
 
@@ -18,7 +19,19 @@ async fn amain() {
     .unwrap();
     builder.add_plugin(shared::KvPlugin).await;
 
-    let client = builder.build();
+    let mut client = builder.build();
+
+    if let Some(mut stdio) = client.stdio().await {
+        tokio::spawn(async move {
+            while let Some(msg) = stdio.next().await {
+                match msg {
+                    StdioData::Stdout(x) => println!("stdout: {}", String::from_utf8_lossy(&x)),
+                    StdioData::Stderr(x) => println!("stderr: {}", String::from_utf8_lossy(&x)),
+                    _ => println!("invalid"),
+                }
+            }
+        });
+    }
 
     let mut kv_client = client.dispense::<shared::KvPlugin>().unwrap();
 
@@ -39,7 +52,7 @@ async fn amain() {
             .unwrap();
         let resp = resp.into_inner();
 
-        println!("aaa = {:?}", resp.value);
+        println!("aaa = {}", String::from_utf8_lossy(&resp.value));
 
         // ctrlc or infinity loop sleep 1s
         select! {
