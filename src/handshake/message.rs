@@ -1,5 +1,5 @@
 use std::{
-    fmt::{self, Display, Formatter},
+    fmt::{Display, Formatter, Result as FmtResult},
     net::SocketAddr,
     path::PathBuf,
     str::FromStr,
@@ -25,7 +25,7 @@ impl Network {
 }
 
 impl Display for Network {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Network::Tcp(addr) => write!(f, "tcp|{addr}",),
             Network::Unix(path) => write!(f, "unix|{}", path.display()),
@@ -50,7 +50,7 @@ impl FromStr for Protocol {
 }
 
 impl Display for Protocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Protocol::Grpc => f.write_str("grpc"),
         }
@@ -83,7 +83,7 @@ impl HandshakeMessage {
 }
 
 impl Display for HandshakeMessage {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
             f,
             "{core_protocol}|{app_protocol}|{network}|{protocol}",

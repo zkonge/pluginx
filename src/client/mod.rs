@@ -6,7 +6,7 @@ use futures::{Stream, StreamExt};
 use tokio::{
     io::AsyncReadExt,
     process::{Child, ChildStderr, ChildStdout},
-    select, time,
+    time,
 };
 pub use tonic::transport::Channel;
 
@@ -60,13 +60,15 @@ impl ClientBuilder {
             .as_mut()
             .expect("stdout is pipe, must success");
         let mut buf = Vec::new();
-        select! {
-            _ = time::sleep(config.startup_timeout) => {
-                return Err(HandshakeError::StarupTimeout.into());
-            }
-            _ = stdout.read_buf(&mut buf) => {}
-        }
+
+        time::timeout(config.startup_timeout, stdout.read_buf(&mut buf))
+            .await
+            .map_err(|_| HandshakeError::StarupTimeout)?
+            .map_err(|_| HandshakeError::InvalidHandshakeMessage)?;
+
         let stdout = String::from_utf8_lossy(&buf);
+
+        dbg!(&stdout);
         let handshake = HandshakeMessage::parse(stdout.trim()).map_err(|error| {
             PluginxError::HandshakeError {
                 error,

@@ -1,5 +1,5 @@
 use std::{
-    io::{self, ErrorKind},
+    io::{ErrorKind, Result},
     net::{Ipv4Addr, SocketAddrV4, TcpListener as StdTcpListener},
     ops::RangeInclusive,
     path::Path,
@@ -9,9 +9,7 @@ use tokio::net::{TcpListener, UnixListener};
 
 /// Find an available TCP listener.
 /// port_range: The range of ports to search for an available port.
-pub(crate) fn find_available_tcp_listener(
-    port_range: RangeInclusive<u16>,
-) -> io::Result<TcpListener> {
+pub(crate) fn find_available_tcp_listener(port_range: RangeInclusive<u16>) -> Result<TcpListener> {
     for port in port_range {
         let addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port);
 
@@ -31,7 +29,7 @@ pub(crate) fn find_available_tcp_listener(
 pub fn find_available_unix_socket_listener(
     prefix: &str,
     dir: Option<&Path>,
-) -> io::Result<UnixListener> {
+) -> Result<UnixListener> {
     let path = loop {
         let mut b = tempfile::Builder::new();
         let b = b.prefix(prefix);

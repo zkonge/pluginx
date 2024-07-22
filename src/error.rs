@@ -1,3 +1,5 @@
+use std::io;
+
 use thiserror::Error;
 
 use crate::handshake::HandshakeError;
@@ -9,7 +11,7 @@ pub enum PluginxError {
     #[error("tokio task panic: {0}")]
     TokioTaskError(#[from] tokio::task::JoinError),
     #[error("io error: {0}")]
-    IoError(#[from] std::io::Error),
+    IoError(#[from] io::Error),
 
     #[error("handshake failed: {error}, message: {message}")]
     HandshakeError {
