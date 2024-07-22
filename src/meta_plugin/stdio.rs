@@ -15,10 +15,15 @@ pub struct StdioHandler {
     tx: Sender<Result<StdioData, Status>>,
 }
 
+pub enum StdioType {
+    Stdout = 1,
+    Stderr = 2,
+}
+
 impl StdioHandler {
-    pub async fn write(&self, out_type: i32, data: Vec<u8>) -> Result<(), Vec<u8>> {
+    pub async fn write(&self, out_type: StdioType, data: Vec<u8>) -> Result<(), Vec<u8>> {
         let data = StdioData {
-            channel: out_type,
+            channel: out_type as i32,
             data,
         };
 

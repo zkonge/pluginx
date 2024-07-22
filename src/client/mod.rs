@@ -1,6 +1,6 @@
 pub mod config;
 
-use std::process::Stdio;
+use std::{future::ready, process::Stdio};
 
 use futures::{Stream, StreamExt};
 use tokio::{
@@ -68,7 +68,6 @@ impl ClientBuilder {
 
         let stdout = String::from_utf8_lossy(&buf);
 
-        dbg!(&stdout);
         let handshake = HandshakeMessage::parse(stdout.trim()).map_err(|error| {
             PluginxError::HandshakeError {
                 error,
@@ -140,11 +139,15 @@ impl Client {
     pub async fn stdio(&mut self) -> Option<impl Stream<Item = StdioData>> {
         let s = self.stdio.take()?.read().await.ok()?;
 
-        Some(s.map(|x| x.unwrap_or_default()).map(|x| match x.channel() {
-            stdio_data::Channel::Invalid => StdioData::Invalid,
-            stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
-            stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
-        }))
+        Some(
+            s.take_while(|x| ready(Result::is_ok(x)))
+                .map(|x| x.expect("x must be Ok"))
+                .map(|x| match x.channel() {
+                    stdio_data::Channel::Invalid => StdioData::Invalid,
+                    stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
+                    stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
+                }),
+        )
     }
 
     /// raw stdout from process instead of RPC, can only be called once.
