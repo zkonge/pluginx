@@ -5,7 +5,6 @@ use std::{env, process::exit};
 
 use http::Request;
 use tonic::body::BoxBody;
-use tonic_health::ServingStatus;
 use tower::Service;
 
 use self::config::ServerConfig;
@@ -59,11 +58,15 @@ load any plugins automatically."
 
         let mut server = InnerServer::new(InnerServerConfig { transport_config }).await?;
 
-        let (mut reporter, svc) = tonic_health::server::health_reporter();
-        reporter
-            .set_service_status("plugin", ServingStatus::Serving)
-            .await;
-        server.add_service(svc);
+        #[cfg(feature = "health")]
+        {
+            use tonic_health::ServingStatus;
+            let (mut reporter, svc) = tonic_health::server::health_reporter();
+            reporter
+                .set_service_status("plugin", ServingStatus::Serving)
+                .await;
+            server.add_service(svc);
+        }
 
         let (svc, exit_signal) = meta_plugin::ControllerServer::new();
         server.add_service(svc);
