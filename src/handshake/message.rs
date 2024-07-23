@@ -66,7 +66,7 @@ pub struct HandshakeMessage {
 }
 
 impl HandshakeMessage {
-    // CORE-PROTOCOL-VERSION | APP-PROTOCOL-VERSION | NETWORK-TYPE | NETWORK-ADDR | PROTOCOL
+    // CORE-PROTOCOL-VERSION | APP-PROTOCOL-VERSION | NETWORK-TYPE | NETWORK-ADDR | PROTOCOL [ | TLS | MULTIPLEX ]
     pub fn parse(s: &str) -> Result<Self, HandshakeError> {
         let it: Vec<_> = s.split('|').map(str::trim).collect();
         if it.len() < 5 {
