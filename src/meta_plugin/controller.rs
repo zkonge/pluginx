@@ -1,4 +1,9 @@
-use tokio::sync::broadcast::{self, Receiver, Sender};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
+use tokio::sync::Notify;
 use tonic::{transport::Channel, Request, Response, Status};
 
 use crate::proto::{
@@ -8,28 +13,34 @@ use crate::proto::{
 };
 
 #[derive(Debug)]
-pub struct ControllerExitSignal(Receiver<()>);
+pub struct ControllerExitSignal(Arc<(Notify, AtomicBool)>);
 
 impl ControllerExitSignal {
-    pub async fn wait(mut self) {
-        _ = self.0.recv().await;
+    pub async fn wait(&self) {
+        let (notify, is_exit) = self.0.as_ref();
+
+        if is_exit.load(Ordering::Acquire) {
+            return;
+        }
+
+        notify.notified().await;
     }
 }
 
 impl Clone for ControllerExitSignal {
     fn clone(&self) -> Self {
-        Self(self.0.resubscribe())
+        Self(self.0.clone())
     }
 }
 
-pub struct ControllerServer(Sender<()>);
+pub struct ControllerServer(Arc<(Notify, AtomicBool)>);
 
 impl ControllerServer {
     pub fn new() -> (GrpcControllerServer<Self>, ControllerExitSignal) {
-        let (tx, rx) = broadcast::channel(1);
+        let n = Arc::new((Notify::new(), Default::default()));
         (
-            GrpcControllerServer::new(Self(tx)),
-            ControllerExitSignal(rx),
+            GrpcControllerServer::new(Self(n.clone())),
+            ControllerExitSignal(n),
         )
     }
 }
@@ -37,8 +48,11 @@ impl ControllerServer {
 #[tonic::async_trait]
 impl GrpcController for ControllerServer {
     async fn shutdown(&self, _: Request<Empty>) -> Result<Response<Empty>, Status> {
-        // don't care about if anyone is wait for shutdown
-        _ = self.0.send(());
+        let (notify, is_exit) = self.0.as_ref();
+
+        is_exit.store(true, Ordering::Release);
+
+        notify.notify_waiters();
 
         Ok(Response::new(Empty {}))
     }
