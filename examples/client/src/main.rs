@@ -21,7 +21,7 @@ async fn amain() {
 
     let mut client = builder.build();
 
-    if let Some(mut stdio) = client.stdio().await {
+    if let Ok(mut stdio) = client.stdio().unwrap().read().await {
         tokio::spawn(async move {
             while let Some(msg) = stdio.next().await {
                 match msg {

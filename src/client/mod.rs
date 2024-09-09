@@ -9,6 +9,7 @@ use tokio::{
     time,
 };
 pub use tonic::transport::Channel;
+use tonic::Status;
 
 use self::config::ClientConfig;
 use crate::{
@@ -136,18 +137,8 @@ impl Client {
     }
 
     /// stdout/stderr data sent from plugin host, it can be only called once, or it will return [`None`]
-    pub async fn stdio(&mut self) -> Option<impl Stream<Item = StdioData>> {
-        let s = self.stdio.take()?.read().await.ok()?;
-
-        Some(
-            s.take_while(|x| ready(Result::is_ok(x)))
-                .map(|x| x.expect("x must be Ok"))
-                .map(|x| match x.channel() {
-                    stdio_data::Channel::Invalid => StdioData::Invalid,
-                    stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
-                    stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
-                }),
-        )
+    pub fn stdio(&mut self) -> Option<StdioStream> {
+        self.stdio.take().map(StdioStream)
     }
 
     /// raw stdout from process instead of RPC, can only be called once.
@@ -174,5 +165,23 @@ impl Drop for Client {
                 let _ = std::fs::remove_file(path);
             }
         }
+    }
+}
+
+// official go-plugin implementation will block the stdio client until the first message is received
+// so we have to move the ownership of the stdio client to the stream
+pub struct StdioStream(StdioClient);
+
+impl StdioStream {
+    pub async fn read(mut self) -> Result<impl Stream<Item = StdioData>, Status> {
+        let s = self.0.read().await?;
+
+        Ok(s.take_while(|x| ready(Result::is_ok(x)))
+            .map(|x| x.expect("x must be Ok"))
+            .map(|x| match x.channel() {
+                stdio_data::Channel::Invalid => StdioData::Invalid,
+                stdio_data::Channel::Stdout => StdioData::Stdout(x.data),
+                stdio_data::Channel::Stderr => StdioData::Stderr(x.data),
+            }))
     }
 }
