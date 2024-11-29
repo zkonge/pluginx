@@ -1,6 +1,6 @@
 use std::{env::args, time::Duration};
 
-use futures::StreamExt;
+use futures_util::StreamExt;
 use pluginx::client::{config::ClientConfig, ClientBuilder, StdioData};
 use shared::{GetRequest, PutRequest};
 use tokio::{process::Command, select};

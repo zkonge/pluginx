@@ -2,7 +2,7 @@ pub mod config;
 
 use std::{future::ready, process::Stdio};
 
-use futures::{Stream, StreamExt};
+use futures_util::{Stream, StreamExt};
 use tokio::{
     io::AsyncReadExt,
     process::{Child, ChildStderr, ChildStdout},

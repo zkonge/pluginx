@@ -5,7 +5,7 @@ use std::{env, process::exit};
 
 use http::Request;
 use tonic::body::BoxBody;
-use tower::Service;
+use tower_service::Service;
 
 use self::config::ServerConfig;
 use crate::{

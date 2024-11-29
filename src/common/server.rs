@@ -9,7 +9,7 @@ use tonic::{
     service::RoutesBuilder,
     transport::server::{Server as TonicServer, TcpIncoming},
 };
-use tower::Service;
+use tower_service::Service;
 
 use super::utils;
 use crate::{handshake::Network, PluginxError};

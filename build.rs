@@ -1,6 +1,6 @@
 fn main() {
     tonic_build::configure()
-        .compile(
+        .compile_protos(
             &[
                 "proto/grpc_broker.proto",
                 "proto/grpc_controller.proto",

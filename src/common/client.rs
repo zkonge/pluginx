@@ -1,20 +1,20 @@
 use std::any::{Any, TypeId};
 
-use ahash::AHashMap;
-use futures::TryFutureExt;
+use foldhash::{HashMap, HashMapExt};
+use futures_util::TryFutureExt;
 use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Uri};
-use tower::service_fn;
 
 use crate::{
+    common::utils::service_fn,
     handshake::{HandshakeError, Network},
     PluginxError,
 };
 
 pub(crate) struct Client {
     channel: Channel,
-    service: AHashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    service: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl Client {
@@ -43,7 +43,7 @@ impl Client {
 
         Ok(Self {
             channel,
-            service: AHashMap::new(),
+            service: HashMap::new(),
         })
     }
 
