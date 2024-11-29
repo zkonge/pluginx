@@ -152,6 +152,7 @@ impl Client {
 
     pub async fn shutdown(mut self) {
         _ = self.controller.shutdown().await;
+        _ = self.plugin_host.wait().await;
     }
 }
 
