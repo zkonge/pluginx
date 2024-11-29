@@ -1,4 +1,4 @@
-use std::{ops::RangeInclusive, time::Duration};
+use std::ops::RangeInclusive;
 
 use tokio::process::Command;
 
@@ -9,5 +9,4 @@ pub struct ClientConfig {
     pub cmd: Command,
     pub broker_multiplex: bool,
     pub port_range: Option<RangeInclusive<u16>>,
-    pub startup_timeout: Duration,
 }

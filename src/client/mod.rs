@@ -6,7 +6,6 @@ use futures_util::{Stream, StreamExt};
 use tokio::{
     io::AsyncReadExt,
     process::{Child, ChildStderr, ChildStdout},
-    time,
 };
 pub use tonic::transport::Channel;
 use tonic::Status;
@@ -62,9 +61,9 @@ impl ClientBuilder {
             .expect("stdout is pipe, must success");
         let mut buf = Vec::new();
 
-        time::timeout(config.startup_timeout, stdout.read_buf(&mut buf))
+        stdout
+            .read_buf(&mut buf)
             .await
-            .map_err(|_| HandshakeError::StarupTimeout)?
             .map_err(|_| HandshakeError::InvalidHandshakeMessage)?;
 
         let stdout = String::from_utf8_lossy(&buf);
