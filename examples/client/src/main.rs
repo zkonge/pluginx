@@ -3,20 +3,21 @@ use std::{env::args, time::Duration};
 use futures_util::StreamExt;
 use pluginx::client::{config::ClientConfig, ClientBuilder, StdioData};
 use shared::{GetRequest, PutRequest};
-use tokio::{process::Command, select};
+use tokio::{process::Command, select, time};
 
 async fn amain() {
     let path = args().nth(1).expect("specify the plugin path");
 
-    let mut builder = ClientBuilder::new(ClientConfig {
+    let builder = ClientBuilder::new(ClientConfig {
         handshake_config: shared::HANDSHAKE_CONFIG,
         cmd: Command::new(path),
         broker_multiplex: false,
         port_range: None,
-        startup_timeout: Duration::from_secs(1),
-    })
-    .await
-    .unwrap();
+    });
+    let mut builder = time::timeout(Duration::from_secs(1), builder)
+        .await
+        .unwrap()
+        .unwrap();
     builder.add_plugin(shared::KvPlugin).await;
 
     let mut client = builder.build();
