@@ -4,7 +4,7 @@ pub mod utils;
 use std::{env, process::exit};
 
 use http::Request;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tower_service::Service;
 
 use self::config::ServerConfig;
@@ -13,7 +13,7 @@ use crate::{
     handshake::{HandshakeMessage, Protocol},
     meta_plugin,
     plugin::PluginServer,
-    PluginxError,
+    PluginxError, StdError,
 };
 
 pub struct Server {
@@ -61,7 +61,7 @@ load any plugins automatically."
         #[cfg(feature = "health")]
         {
             use tonic_health::ServingStatus;
-            let (mut reporter, svc) = tonic_health::server::health_reporter();
+            let (reporter, svc) = tonic_health::server::health_reporter();
             reporter
                 .set_service_status("plugin", ServingStatus::Serving)
                 .await;
@@ -103,9 +103,8 @@ load any plugins automatically."
     #[inline]
     pub async fn add_plugin<P: PluginServer + 'static>(&mut self, plugin: P) -> &mut Self
     where
-        <P::Server as Service<Request<BoxBody>>>::Future: Send + 'static,
-        <P::Server as Service<Request<BoxBody>>>::Error:
-            Into<Box<dyn std::error::Error + Send + Sync>> + Send,
+        <P::Server as Service<Request<Body>>>::Future: Send + 'static,
+        <P::Server as Service<Request<Body>>>::Error: Into<StdError> + Send,
     {
         let plugin = plugin.server().await;
         self.server.add_service(plugin);

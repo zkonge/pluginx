@@ -1,7 +1,7 @@
 use std::{convert::Infallible, future::Future};
 
 use http::{Request, Response};
-use tonic::{body::BoxBody, server::NamedService, transport::Channel};
+use tonic::{body::Body, server::NamedService, transport::Channel};
 use tower_service::Service;
 
 pub trait PluginClient {
@@ -11,10 +11,11 @@ pub trait PluginClient {
 }
 
 pub trait PluginServer {
-    type Server: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
+    type Server: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
         + NamedService
         + Clone
         + Send
+        + Sync
         + 'static;
 
     fn server(&self) -> impl Future<Output = Self::Server> + Send;
@@ -23,7 +24,7 @@ pub trait PluginServer {
 /// for those service doesn't need broker
 impl<T> PluginServer for T
 where
-    T: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
+    T: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
         + NamedService
         + Clone
         + Send

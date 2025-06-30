@@ -5,11 +5,11 @@ edition = "2021"
 
 [dependencies]
 prost = { version = "0.13.3" }
-tonic = { version = "0.12.3", default-features = false, features = [
+tonic = { version = "0.13.1", default-features = false, features = [
     "codegen",
     "prost",
 ] }
 pluginx = { path = "../../" }
 
 [build-dependencies]
-tonic-build = "0.12.3"
+tonic-build = "0.13.1"

@@ -4,7 +4,7 @@ use http::{Request, Response};
 use tokio::net::{TcpListener, UnixListener};
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::{
-    body::BoxBody,
+    body::Body,
     server::NamedService,
     service::RoutesBuilder,
     transport::server::{Server as TonicServer, TcpIncoming},
@@ -69,10 +69,11 @@ impl Server {
     #[inline]
     pub(crate) fn add_service<S>(&mut self, service: S) -> &mut Self
     where
-        S: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
+        S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
             + NamedService
             + Clone
             + Send
+            + Sync
             + 'static,
         S::Future: Send + 'static,
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
@@ -106,11 +107,10 @@ impl Server {
                 }
             }
             Transport::Tcp(t) => {
-                let server = TonicServer::builder().add_routes(routes);
-                let incoming =
-                    TcpIncoming::from_listener(t, true, None).expect("local_addr must existed");
+                let incoming = TcpIncoming::from(t);
 
-                server
+                TonicServer::builder()
+                    .add_routes(routes)
                     .serve_with_incoming_shutdown(incoming, exiter)
                     .await?;
             }

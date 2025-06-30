@@ -12,3 +12,5 @@ pub mod server;
 pub use tonic::{async_trait, server::NamedService, Request, Response, Status, Streaming};
 
 pub use self::error::PluginxError;
+
+type StdError = Box<dyn std::error::Error + Send + Sync>;
