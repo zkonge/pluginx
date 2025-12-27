@@ -34,7 +34,9 @@ pub(crate) enum Transport {
 }
 
 pub(crate) struct Server {
-    transport: Transport,
+    // the Option makes Drop trait available while we use moving self in run()
+    transport: Option<Transport>,
+    network: Network,
     routes_builder: RoutesBuilder,
 }
 
@@ -49,21 +51,26 @@ impl Server {
             }
         };
 
+        let network = match &transport {
+            Transport::Unix(listener) => Network::Unix(
+                listener
+                    .local_addr()?
+                    .as_pathname()
+                    .expect("uses a named UDS")
+                    .to_owned(),
+            ),
+            Transport::Tcp(listener) => Network::Tcp(listener.local_addr()?),
+        };
+
         Ok(Self {
-            transport,
+            transport: Some(transport),
+            network,
             routes_builder: RoutesBuilder::default(),
         })
     }
 
-    pub(crate) fn network(&self) -> Result<Network, PluginxError> {
-        let n = match &self.transport {
-            Transport::Unix(listener) => {
-                Network::Unix(listener.local_addr()?.as_pathname().unwrap().to_owned())
-            }
-            Transport::Tcp(listener) => Network::Tcp(listener.local_addr()?),
-        };
-
-        Ok(n)
+    pub(crate) fn network(&self) -> &Network {
+        &self.network
     }
 
     #[inline]
@@ -86,14 +93,14 @@ impl Server {
         mut self,
         exiter: impl Future<Output = ()>,
     ) -> Result<(), PluginxError> {
-        let unix_socket_path = match self.network()? {
+        let unix_socket_path = match &self.network {
             Network::Unix(p) => Some(p),
             _ => None,
         };
 
         let routes = mem::take(&mut self.routes_builder).routes();
 
-        match self.transport {
+        match self.transport.take().expect("transport is always Some") {
             Transport::Unix(u) => {
                 let incoming = UnixListenerStream::new(u);
 
@@ -117,5 +124,13 @@ impl Server {
         }
 
         Ok(())
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        if let Network::Unix(path) = &self.network {
+            _ = std::fs::remove_file(path);
+        }
     }
 }

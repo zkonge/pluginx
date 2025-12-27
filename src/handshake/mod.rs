@@ -7,7 +7,7 @@ use thiserror::Error;
 
 pub use self::{
     config::HandshakeConfig,
-    message::{HandshakeMessage, Network, Protocol},
+    message::{HandshakeMessage, Protocol, Network},
 };
 
 #[derive(Error, Debug)]

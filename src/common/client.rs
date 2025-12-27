@@ -13,13 +13,14 @@ use crate::{
 };
 
 pub(crate) struct Client {
+    network: Network,
     channel: Channel,
     service: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl Client {
-    pub(crate) async fn new(network: &Network) -> Result<Self, PluginxError> {
-        let channel = match network {
+    pub(crate) async fn new(network: Network) -> Result<Self, PluginxError> {
+        let channel = match &network {
             Network::Tcp(addr) => {
                 let uri = Uri::builder()
                     .scheme("http")
@@ -42,6 +43,7 @@ impl Client {
         };
 
         Ok(Self {
+            network,
             channel,
             service: HashMap::new(),
         })
@@ -67,5 +69,14 @@ impl Client {
             .get(&id)
             .and_then(|p| p.downcast_ref::<S>())
             .cloned()
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        // TODO: shutdown in sync context
+        if let Network::Unix(path) = &self.network {
+            _ = std::fs::remove_file(path);
+        }
     }
 }

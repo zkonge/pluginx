@@ -22,17 +22,23 @@ async fn amain() {
 
     let mut client = builder.build();
 
-    if let Ok(mut stdio) = client.stdio().unwrap().read().await {
-        tokio::spawn(async move {
-            while let Some(msg) = stdio.next().await {
-                match msg {
-                    StdioData::Stdout(x) => println!("stdout: {}", String::from_utf8_lossy(&x)),
-                    StdioData::Stderr(x) => println!("stderr: {}", String::from_utf8_lossy(&x)),
-                    _ => println!("invalid"),
-                }
+    let stdio = client.stdio().unwrap();
+    tokio::spawn(async move {
+        let mut stdio = match stdio.read().await {
+            Ok(stdio) => stdio,
+            Err(e) => {
+                eprintln!("failed to read stdio: {e}");
+                return;
             }
-        });
-    }
+        };
+        while let Some(msg) = stdio.next().await {
+            match msg {
+                StdioData::Stdout(x) => println!("stdout: {}", String::from_utf8_lossy(&x)),
+                StdioData::Stderr(x) => println!("stderr: {}", String::from_utf8_lossy(&x)),
+                _ => println!("invalid"),
+            }
+        }
+    });
 
     let mut kv_client = client.dispense::<shared::KvPlugin>().unwrap();
 

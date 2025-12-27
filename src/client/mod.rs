@@ -14,7 +14,7 @@ use self::config::ClientConfig;
 use crate::{
     common::client::Client as InnerClient,
     constant::{PLUGIN_MAX_PORT, PLUGIN_MIN_PORT},
-    handshake::{HandshakeError, HandshakeMessage, Network},
+    handshake::{HandshakeError, HandshakeMessage},
     meta_plugin::{ControllerClient, StdioClient},
     plugin::PluginClient,
     proto::stdio_data,
@@ -22,7 +22,6 @@ use crate::{
 };
 
 pub struct ClientBuilder {
-    handshake: HandshakeMessage,
     plugin_host: Child,
 
     controller: ControllerClient,
@@ -68,22 +67,20 @@ impl ClientBuilder {
 
         let stdout = String::from_utf8_lossy(&buf);
 
-        let handshake = HandshakeMessage::parse(stdout.trim()).map_err(|error| {
-            PluginxError::Handshake {
+        let handshake =
+            HandshakeMessage::parse(stdout.trim()).map_err(|error| PluginxError::Handshake {
                 error,
                 message: stdout.to_string(),
-            }
-        })?;
+            })?;
 
         // 4. connect with gRPC
-        let client = InnerClient::new(&handshake.network).await?;
+        let client = InnerClient::new(handshake.network.clone()).await?;
 
         // 5. load builtin plugins
         let controller = ControllerClient::new(client.channel().clone());
         let stdio = StdioClient::new(client.channel().clone());
 
         Ok(Self {
-            handshake,
             plugin_host,
 
             controller,
@@ -101,7 +98,6 @@ impl ClientBuilder {
 
     pub fn build(self) -> Client {
         Client {
-            handshake: self.handshake,
             plugin_host: self.plugin_host,
 
             controller: self.controller,
@@ -121,7 +117,6 @@ pub enum StdioData {
 }
 
 pub struct Client {
-    handshake: HandshakeMessage,
     plugin_host: Child,
 
     controller: ControllerClient,
@@ -135,17 +130,17 @@ impl Client {
         self.client.dispense::<P::Client>()
     }
 
-    /// stdout/stderr data sent from plugin host, it can be only called once, or it will return [`None`]
+    /// stdout/stderr data sent from plugin host, it can be only called once, or it will return [`None`].
     pub fn stdio(&mut self) -> Option<StdioStream> {
         self.stdio.take().map(StdioStream)
     }
 
-    /// raw stdout from process instead of RPC, can only be called once.
+    /// raw stdout from process instead of RPC, can only be called once, or it will return [`None`].
     pub fn raw_stdout(&mut self) -> Option<ChildStdout> {
         self.plugin_host.stdout.take()
     }
 
-    /// raw stderr from process instead of RPC, can only be called once.
+    /// raw stderr from process instead of RPC, can only be called once, or it will return [`None`].
     pub fn raw_stderr(&mut self) -> Option<ChildStderr> {
         self.plugin_host.stderr.take()
     }
@@ -153,18 +148,6 @@ impl Client {
     pub async fn shutdown(mut self) {
         _ = self.controller.shutdown().await;
         _ = self.plugin_host.wait().await;
-    }
-}
-
-impl Drop for Client {
-    fn drop(&mut self) {
-        // TODO: shutdown in sync context
-        match &self.handshake.network {
-            Network::Tcp(_) => {}
-            Network::Unix(path) => {
-                let _ = std::fs::remove_file(path);
-            }
-        }
     }
 }
 

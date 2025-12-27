@@ -38,6 +38,7 @@ pub struct ControllerServer(Arc<(Notify, AtomicBool)>);
 impl ControllerServer {
     pub fn new() -> (GrpcControllerServer<Self>, ControllerExitSignal) {
         let n = Arc::new((Notify::new(), Default::default()));
+
         (
             GrpcControllerServer::new(Self(n.clone())),
             ControllerExitSignal(n),

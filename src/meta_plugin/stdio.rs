@@ -30,7 +30,7 @@ impl StdioHandler {
         self.tx
             .send(Ok(data))
             .await
-            .map_err(|SendError(r)| r.unwrap().data)
+            .map_err(|SendError(r)| r.expect("take back the Ok inner data").data)
     }
 }
 
@@ -39,6 +39,7 @@ pub struct StdioServer(Mutex<Option<Receiver<Result<StdioData, Status>>>>);
 impl StdioServer {
     pub fn new() -> (GrpcStdioServer<Self>, StdioHandler) {
         let (tx, rx) = mpsc::channel(1);
+
         (
             GrpcStdioServer::new(Self(Mutex::new(Some(rx)))),
             StdioHandler { tx },
@@ -72,17 +73,12 @@ pub struct StdioClient {
 
 impl StdioClient {
     pub fn new(channel: Channel) -> Self {
-        let client = GrpcStdioClient::new(channel);
-        Self { client }
+        Self {
+            client: GrpcStdioClient::new(channel),
+        }
     }
 
     pub async fn read(&mut self) -> Result<Streaming<StdioData>, Status> {
-        let s = self
-            .client
-            .stream_stdio(())
-            .await?
-            .into_inner();
-
-        Ok(s)
+        Ok(self.client.stream_stdio(()).await?.into_inner())
     }
 }

@@ -7,7 +7,7 @@ use std::{
 
 use super::HandshakeError;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Network {
     Tcp(SocketAddr),
     Unix(PathBuf),

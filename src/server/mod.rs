@@ -112,7 +112,7 @@ load any plugins automatically."
     }
 
     pub async fn run(self) -> Result<(), PluginxError> {
-        let network = self.server.network()?;
+        let network = self.server.network().clone();
 
         let hs = HandshakeMessage {
             core_protocol: 1,
