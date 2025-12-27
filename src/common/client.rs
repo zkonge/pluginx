@@ -25,7 +25,7 @@ impl Client {
                     .scheme("http")
                     .authority(addr.to_string())
                     .build()
-                    .map_err(|_| PluginxError::HandshakeError {
+                    .map_err(|_| PluginxError::Handshake {
                         error: HandshakeError::InvalidNetwork,
                         message: addr.to_string(),
                     })?;
@@ -33,7 +33,7 @@ impl Client {
             }
             Network::Unix(path) => {
                 let path = path.to_owned();
-                Channel::from_static("http://[::1]")
+                Channel::from_static("http://pluginx")
                     .connect_with_connector(service_fn(move |_: Uri| {
                         UnixStream::connect(path.clone()).map_ok(TokioIo::new)
                     }))

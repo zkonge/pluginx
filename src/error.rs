@@ -7,14 +7,14 @@ use crate::handshake::HandshakeError;
 #[derive(Error, Debug)]
 pub enum PluginxError {
     #[error("tonic: {0}")]
-    TonicError(#[from] tonic::transport::Error),
+    Tonic(#[from] tonic::transport::Error),
     #[error("tokio task panic: {0}")]
-    TokioTaskError(#[from] tokio::task::JoinError),
+    TokioTask(#[from] tokio::task::JoinError),
     #[error("io error: {0}")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
 
     #[error("handshake failed: {error}, message: {message}")]
-    HandshakeError {
+    Handshake {
         error: HandshakeError,
         message: String,
     },
@@ -23,7 +23,7 @@ pub enum PluginxError {
 /// fast convert for [`HandshakeError`] that doesn't provides any message
 impl From<HandshakeError> for PluginxError {
     fn from(error: HandshakeError) -> Self {
-        Self::HandshakeError {
+        Self::Handshake {
             error,
             message: String::new(),
         }

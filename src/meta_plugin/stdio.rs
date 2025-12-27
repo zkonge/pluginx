@@ -79,7 +79,7 @@ impl StdioClient {
     pub async fn read(&mut self) -> Result<Streaming<StdioData>, Status> {
         let s = self
             .client
-            .stream_stdio(Request::new(()))
+            .stream_stdio(())
             .await?
             .into_inner();
 

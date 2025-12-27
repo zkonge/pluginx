@@ -69,7 +69,7 @@ impl ClientBuilder {
         let stdout = String::from_utf8_lossy(&buf);
 
         let handshake = HandshakeMessage::parse(stdout.trim()).map_err(|error| {
-            PluginxError::HandshakeError {
+            PluginxError::Handshake {
                 error,
                 message: stdout.to_string(),
             }

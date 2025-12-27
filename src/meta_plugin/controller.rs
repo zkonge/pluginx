@@ -70,10 +70,7 @@ impl ControllerClient {
     }
 
     pub async fn shutdown(&mut self) -> Result<(), Status> {
-        self.client
-            .shutdown(Request::new(Empty {}))
-            .await?
-            .into_inner();
+        self.client.shutdown(Empty {}).await?.into_inner();
         Ok(())
     }
 }
