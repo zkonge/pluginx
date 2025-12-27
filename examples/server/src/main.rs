@@ -6,11 +6,7 @@ use pluginx::{
     Request, Response, Status,
 };
 use shared::{kv_server::KvServer, Empty, GetRequest, GetResponse, PutRequest};
-use tokio::{
-    select,
-    signal::unix::{signal, SignalKind},
-    sync::Mutex,
-};
+use tokio::sync::Mutex;
 
 struct KvImpl(Mutex<HashMap<String, Vec<u8>>>);
 
@@ -55,18 +51,7 @@ async fn amain() {
             .unwrap();
     });
 
-    let mut sigterm = signal(SignalKind::terminate()).unwrap();
-    let mut sigint = signal(SignalKind::interrupt()).unwrap();
-
-    select! {
-        _ = sigterm.recv() => {
-            _ = stdio.write(StdioType::Stdout, b"recv SIGTERM".to_vec()).await;
-        },
-        _ = sigint.recv() => {
-            _ = stdio.write(StdioType::Stdout, b"recv SIGINT".to_vec()).await;
-        },
-        _ = server.run() => {},
-    }
+    server.run().await.unwrap();
 }
 
 fn main() {

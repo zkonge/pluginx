@@ -151,6 +151,17 @@ impl Client {
     }
 }
 
+impl Drop for Client {
+    fn drop(&mut self) {
+        // if process is still running, kill it
+        if let Ok(None) = self.plugin_host.try_wait() {
+            _ = self.plugin_host.start_kill();
+            // prevent zombie process
+            _ = self.plugin_host.try_wait();
+        }
+    }
+}
+
 // official go-plugin implementation will block the stdio client until the first message is received
 // so we have to move the ownership of the stdio client to the stream
 pub struct StdioStream(StdioClient);

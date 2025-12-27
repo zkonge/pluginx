@@ -4,6 +4,10 @@ pub mod utils;
 use std::{env, process::exit};
 
 use http::Request;
+use tokio::{
+    select,
+    signal::unix::{signal, SignalKind},
+};
 use tonic::body::Body;
 use tower_service::Service;
 
@@ -112,6 +116,22 @@ load any plugins automatically."
     }
 
     pub async fn run(self) -> Result<(), PluginxError> {
+        // go-plugin captures SIGINT and ignores them, relying on the
+        // host process to manage the plugin lifecycle. We do the same here.
+        //
+        // We also capture SIGTERM because it is commonly used to signal process.
+        //
+        // Notice that systemd like send SIGTERM to the process tree, so SIGTERM is
+        // nessesary to capture when running as a systemd service.
+
+        // if registering the signals fails, we just proceed without them.
+        let _s = (
+            signal(SignalKind::interrupt()),
+            signal(SignalKind::terminate()),
+        );
+
+        let exiter = self.exit_signal();
+
         let network = self.server.network().clone();
 
         let hs = HandshakeMessage {
@@ -122,8 +142,12 @@ load any plugins automatically."
         };
         println!("{hs}");
 
-        let exiter = self.exit_signal();
-
-        self.server.run(exiter.wait()).await
+        // TODO: find a way to both send back GrpcController shutdown and also
+        // force close other resources (like flying streams).
+        select! {
+            biased;
+            r = self.server.run() => r,
+            _ = exiter.wait() => Ok(()),
+        }
     }
 }

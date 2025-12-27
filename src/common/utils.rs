@@ -38,7 +38,7 @@ pub(crate) fn find_available_unix_socket_listener(
 ) -> IoResult<UnixListener> {
     let path = loop {
         let mut b = tempfile::Builder::new();
-        let b = b.prefix(prefix);
+        let b = b.prefix(prefix).rand_bytes(8);
 
         let r = if let Some(dir) = dir {
             b.tempfile_in(dir)

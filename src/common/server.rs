@@ -1,4 +1,4 @@
-use std::{convert::Infallible, fs, future::Future, mem, ops::RangeInclusive, path::Path};
+use std::{convert::Infallible, fs, mem, ops::RangeInclusive, path::Path};
 
 use http::{Request, Response};
 use tokio::net::{TcpListener, UnixListener};
@@ -89,37 +89,21 @@ impl Server {
         self
     }
 
-    pub(crate) async fn run(
-        mut self,
-        exiter: impl Future<Output = ()>,
-    ) -> Result<(), PluginxError> {
-        let unix_socket_path = match &self.network {
-            Network::Unix(p) => Some(p),
-            _ => None,
-        };
-
+    pub(crate) async fn run(mut self) -> Result<(), PluginxError> {
         let routes = mem::take(&mut self.routes_builder).routes();
 
         match self.transport.take().expect("transport is always Some") {
             Transport::Unix(u) => {
-                let incoming = UnixListenerStream::new(u);
-
                 TonicServer::builder()
                     .add_routes(routes)
-                    .serve_with_incoming_shutdown(incoming, exiter)
-                    .await?;
-
-                if let Some(path) = unix_socket_path {
-                    _ = fs::remove_file(path);
-                }
+                    .serve_with_incoming(UnixListenerStream::new(u))
+                    .await?
             }
             Transport::Tcp(t) => {
-                let incoming = TcpIncoming::from(t);
-
                 TonicServer::builder()
                     .add_routes(routes)
-                    .serve_with_incoming_shutdown(incoming, exiter)
-                    .await?;
+                    .serve_with_incoming(TcpIncoming::from(t))
+                    .await?
             }
         }
 
@@ -130,7 +114,7 @@ impl Server {
 impl Drop for Server {
     fn drop(&mut self) {
         if let Network::Unix(path) = &self.network {
-            _ = std::fs::remove_file(path);
+            _ = fs::remove_file(path);
         }
     }
 }
