@@ -2,7 +2,7 @@
 name = "pluginx"
 version = "0.0.0"
 authors = ["Konge <zkonge@outlook.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 futures-util = { version = "0.3.31", default-features = false }
